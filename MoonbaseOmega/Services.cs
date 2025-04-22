@@ -12,4 +12,5 @@ public class Services {
     [PluginService] public static IPluginLog PluginLog { get; private set; } = null!;
     [PluginService] public static IGameConfig GameConfig { get; private set; } = null!;
     [PluginService] public static IFramework Framework { get; private set; } = null!;
+    [PluginService] public static INotificationManager NotificationManager { get; private set; } = null!;
 }

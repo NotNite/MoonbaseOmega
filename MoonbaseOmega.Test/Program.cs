@@ -1,11 +1,7 @@
-﻿using System.Reflection;
-using MoonbaseOmega.TextToSpeech;
+﻿using MoonbaseOmega.TextToSpeech;
 
-var dir = Path.Combine(
-    Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!,
-    "DECtalk"
-);
-Native.SetupResolver(Path.Combine(dir, "DECtalk.dll"));
+const string dir = "C:/Users/Julian/AppData/Roaming/XIVLauncher/pluginConfigs/MoonbaseOmega/DECtalk";
+Native.SetupResolver(Path.Combine(dir, "DECTALK.dll"));
 var dictionary = Path.Combine(dir, "dtalk_us.dic");
 
 var tasks = new List<Task>();

@@ -3,6 +3,3 @@ obj/
 .idea/
 .vs/
 *.user
-
-# temp
-/MoonbaseOmega.TextToSpeech/DECtalk/*

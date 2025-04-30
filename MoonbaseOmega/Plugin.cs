@@ -1,9 +1,5 @@
 using System;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Net.Http;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
@@ -12,7 +8,6 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Config;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Interface.ImGuiNotification;
 
 namespace MoonbaseOmega;
 
@@ -23,7 +18,7 @@ public class Plugin : IDalamudPlugin {
     private readonly WindowSystem windowSystem = new("MoonbaseOmega");
     private readonly Configuration configuration;
     private readonly ConfigWindow configWindow;
-    private SpeechManager? speechManager;
+    private readonly SpeechManager speechManager;
 
     public Plugin(IDalamudPluginInterface pluginInterface) {
         pluginInterface.Create<Services>();
@@ -42,22 +37,9 @@ public class Plugin : IDalamudPlugin {
         );
         if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
 
-        Task.Run(() => DownloadDecTalk(outputDir)).ContinueWith(t => {
-            if (t.IsFaulted) {
-                Services.PluginLog.Error(t.Exception.InnerException, "Failed to download DECtalk");
-                Services.NotificationManager.AddNotification(new Notification() {
-                    Title = "Moonbase Omega",
-                    Content = "Failed to download DECtalk. Please report this error.",
-                    Type = NotificationType.Error
-                });
-            } else {
-                this.speechManager = new SpeechManager(outputDir);
-                this.UpdateVolume();
-                Services.PluginLog.Debug("DECtalk initialized :3");
-            }
-        });
+        this.speechManager = new SpeechManager(outputDir, this.ComputeVolume(), this.configuration.MaxInstances);
 
-        this.configWindow = new ConfigWindow(this.configuration, this.UpdateVolume);
+        this.configWindow = new ConfigWindow(this.speechManager, this.configuration);
         this.windowSystem.AddWindow(this.configWindow);
 
         Services.PluginInterface.UiBuilder.Draw += this.DrawUi;
@@ -68,9 +50,13 @@ public class Plugin : IDalamudPlugin {
 
         Services.ChatGui.ChatMessage += this.ChatMessage;
         Services.GameConfig.SystemChanged += this.SystemChanged;
+
+        this.configuration.OnConfigurationSaved += this.OnConfigurationSaved;
     }
 
     public void Dispose() {
+        this.configuration.OnConfigurationSaved -= this.OnConfigurationSaved;
+
         Services.GameConfig.SystemChanged -= this.SystemChanged;
         Services.ChatGui.ChatMessage -= this.ChatMessage;
 
@@ -79,56 +65,28 @@ public class Plugin : IDalamudPlugin {
         Services.PluginInterface.UiBuilder.OpenConfigUi -= this.ToggleConfigUi;
 
         this.windowSystem.RemoveAllWindows();
+        this.configWindow.Dispose();
 
-        this.speechManager?.Dispose();
+        this.speechManager.Dispose();
         this.configuration.Save();
 
         GC.SuppressFinalize(this);
     }
 
-    private static async Task DownloadDecTalk(string outputDir) {
-        const string url = "https://github.com/dectalk/dectalk/releases/download/2023-10-30/vs2022.zip";
-        const string expectedHash = "4a778056c109b37f95ade4b3d3e308b9396b22a4b0629f9756ec0e5051b9636d";
-        string[] zipFiles = ["AMD64/DECtalk.dll", "AMD64/dtalk_us.dic"];
+    private void OnConfigurationSaved() {
+        var maxInstances = this.configuration.MaxInstances;
+        var volume = this.ComputeVolume();
 
-        // Already installed
-        if (zipFiles.All(entry => {
-                var name = Path.GetFileName(entry);
-                var path = Path.Combine(outputDir, name);
-                return File.Exists(path);
-            })) {
-            return;
-        }
-
-        Services.PluginLog.Debug("Downloading DECtalk...");
-        using var http = new HttpClient();
-        var data = await http.GetByteArrayAsync(url);
-        var hash = Convert.ToHexStringLower(SHA256.HashData(data));
-        if (hash != expectedHash) throw new Exception($"Mismatched hash (expected {expectedHash}, got {hash})");
-
-        using var ms = new MemoryStream(data);
-        using var zip = new ZipArchive(ms);
-
-        foreach (var file in zipFiles) {
-            var entry = zip.GetEntry(file)!;
-            var outputPath = Path.Combine(outputDir, Path.GetFileName(file));
-
-            await using var bytes = entry.Open();
-            await using var output = File.OpenWrite(outputPath);
-            await bytes.CopyToAsync(output);
-            await output.FlushAsync();
-        }
+        Task.Run(async () => {
+            await this.speechManager.SetMaxInstances(maxInstances);
+            await this.speechManager.SetVolume(volume);
+        });
     }
 
-    private void UpdateVolume() {
-        if (this.speechManager is not { } speech) return;
-
+    private int ComputeVolume() {
         if (!Services.GameConfig.TryGet(SystemConfigOption.SoundMaster, out uint masterVolume)) masterVolume = 100;
         var volume = this.configuration.Volume * (masterVolume / 100f);
-        var volumeInt = Math.Min(Math.Max((int) volume, 0), 100);
-
-        Services.PluginLog.Debug("Setting volume: {Volume}", volumeInt);
-        Services.Framework.RunOnTick(() => speech.SetVolume(volumeInt));
+        return Math.Min(Math.Max((int) volume, 0), 100);
     }
 
     private void ChatMessage(
@@ -136,22 +94,16 @@ public class Plugin : IDalamudPlugin {
     ) {
         if (Services.ClientState.TerritoryType != TerritoryType) return;
         if (!this.configuration.ChatTypes!.Contains(type)) return;
-        this.Speak(message.TextValue);
+
+        var text = message.TextValue;
+        Task.Run(() => this.speechManager.TrySpeak(text));
     }
 
-    private void Speak(string message) => Services.Framework.RunOnTick(() => {
-        if (this.speechManager is not { } speech) return;
-
-        try {
-            var spoke = speech.TrySpeak(message);
-            if (!spoke) Services.PluginLog.Warning("Failed to speak message (probably out of slots?)");
-        } catch (Exception e) {
-            Services.PluginLog.Warning(e, "Error when speaking message");
-        }
-    });
-
     private void SystemChanged(object? sender, ConfigChangeEvent e) {
-        if (e.Option.Equals(SystemConfigOption.SoundMaster)) this.UpdateVolume();
+        if (e.Option.Equals(SystemConfigOption.SoundMaster)) {
+            var volume = this.ComputeVolume();
+            Task.Run(() => this.speechManager.SetVolume(volume));
+        }
     }
 
     private void DrawUi() => this.windowSystem.Draw();
@@ -161,7 +113,7 @@ public class Plugin : IDalamudPlugin {
         const string debug = "debug ";
         if (args.StartsWith(debug)) {
             var str = args[(debug.Length)..];
-            this.Speak(str);
+            Task.Run(() => this.speechManager.TrySpeak(str));
         } else {
             this.ToggleConfigUi();
         }

@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace MoonbaseOmega.TextToSpeech;
+﻿namespace MoonbaseOmega.TextToSpeech;
 
 public class TextToSpeech : IDisposable {
     private readonly nint handle;

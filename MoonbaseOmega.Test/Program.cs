@@ -1,10 +1,15 @@
 ﻿using MoonbaseOmega.TextToSpeech;
 
-const string dir = "C:/Users/Julian/AppData/Roaming/XIVLauncher/pluginConfigs/MoonbaseOmega/DECtalk";
-Native.SetupResolver(Path.Combine(dir, "DECTALK.dll"));
+var xl = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+    "XIVLauncher"
+);
+var dir = Path.Combine(xl, "pluginConfigs", "MoonbaseOmega", "DECtalk");
+
+Native.SetupResolver(Path.Combine(dir, "DECtalk.dll"));
 var dictionary = Path.Combine(dir, "dtalk_us.dic");
 
-var tasks = new List<Task>();
+/*var tasks = new List<Task>();
 for (var i = 0; i < 5; i++) {
     var index = i;
     tasks.Add(Task.Run(async () => {
@@ -26,5 +31,13 @@ for (var i = 0; i < 5; i++) {
         }
     }));
 }
+await Task.WhenAll(tasks);*/
 
-await Task.WhenAll(tasks);
+var tts = new TextToSpeech(dictionary);
+tts.SetVolume(100);
+
+tts.Speak("aeiou");
+await Task.Delay(100);
+tts.Dispose();
+
+await Task.Delay(1000);

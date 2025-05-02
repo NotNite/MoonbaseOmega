@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace MoonbaseOmega.TextToSpeech;
 
@@ -34,6 +35,10 @@ public unsafe partial class Native {
     public static partial uint TextToSpeechGetStatus(
         nint handle, [In] uint[] identifiers, [Out] uint[] statuses, uint numStatuses
     );
+
+    // yes, `reset` is a four byte bool here https://dectalk.github.io/dectalk/idh_sdk_2_texttospeechreset.htm
+    [LibraryImport(LibraryName)]
+    public static partial uint TextToSpeechReset(nint handle, [MarshalAs(UnmanagedType.Bool)] bool reset);
 
     public static void SetupResolver(string dllPath) =>
         NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(),

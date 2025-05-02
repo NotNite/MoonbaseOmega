@@ -55,6 +55,15 @@ public class Plugin : IDalamudPlugin {
     }
 
     public void Dispose() {
+        if (this.configuration.AutoDeleteLogFile) {
+            try {
+                TextToSpeech.TextToSpeech.DeleteLogFile();
+                Services.PluginLog.Debug("Deleted log file");
+            } catch (Exception e) {
+                Services.PluginLog.Warning(e, "Failed to delete log file");
+            }
+        }
+
         this.configuration.OnConfigurationSaved -= this.OnConfigurationSaved;
 
         Services.GameConfig.SystemChanged -= this.SystemChanged;

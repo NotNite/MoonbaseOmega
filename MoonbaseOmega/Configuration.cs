@@ -15,6 +15,7 @@ public class Configuration : IPluginConfiguration {
     [JsonProperty] public int MaxInstances = 5;
     [JsonProperty] public int Volume = 50;
     [JsonProperty] public List<XivChatType>? ChatTypes;
+    [JsonProperty] public bool AutoDeleteLogFile;
 
     public void Save() {
         Services.PluginInterface.SavePluginConfig(this);

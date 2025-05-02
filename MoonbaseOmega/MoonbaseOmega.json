@@ -3,5 +3,6 @@
     "Author": "NotNite",
     "Punchline": "Adds Moonbase Alpha TTS when in Cosmic Exploration. aeiou!",
     "Description": "Plays chat messages sent in Cosmic Exploration via DECtalk (the TTS used in Moonbase Alpha).",
-    "RepoUrl": "https://github.com/NotNite/MoonbaseOmega"
+    "RepoUrl": "https://github.com/NotNite/MoonbaseOmega",
+    "Tags": ["moonbase", "alpha", "tts", "dectalk", "aeiou"]
 }

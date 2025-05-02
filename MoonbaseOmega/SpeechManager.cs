@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Dalamud.Interface.ImGuiNotification;
 using MoonbaseOmega.TextToSpeech;
 
 namespace MoonbaseOmega;
@@ -27,7 +28,19 @@ public class SpeechManager : IDisposable {
         this.volume = volume;
         this.maxInstances = maxInstances;
 
-        this.downloadTask = Task.Run(() => DownloadDecTalk(dectalkDir));
+        this.downloadTask = Task.Run(() => DownloadDecTalk(dectalkDir)).ContinueWith(t => {
+            if (t.IsFaulted) {
+                Services.PluginLog.Error(t.Exception?.InnerException ?? t.Exception, "Failed to download DECtalk");
+
+                Services.NotificationManager.AddNotification(new Notification() {
+                    Title = "Moonbase Omega",
+                    Content = "Failed to download DECtalk. See the config window for more information.",
+                    Type = NotificationType.Error
+                });
+            }
+
+            return t;
+        }).Unwrap();
     }
 
     public void Dispose() {
@@ -43,17 +56,18 @@ public class SpeechManager : IDisposable {
             // Try and play on an existing instance if possible
             var instance = this.instances.Find(instance => !instance.IsBusy());
             if (instance is not null) {
+                instance.SetVolume(this.volume); // make sure to update the volume before speaking
                 instance.Speak(text);
                 return true;
             }
 
             if (this.instances.Count >= this.maxInstances) {
-                // Services.PluginLog.Warning("Ran out of instances when playing message");
+                Services.PluginLog.Verbose("Ran out of instances when playing message");
                 return false;
             }
 
             if (!this.downloadTask.IsCompletedSuccessfully) {
-                // Services.PluginLog.Warning("Tried to create instance before download task completed");
+                Services.PluginLog.Verbose("Tried to create instance before download task completed");
                 return false;
             }
 
@@ -71,18 +85,16 @@ public class SpeechManager : IDisposable {
         Services.PluginLog.Debug("Setting volume: {NewVolume}", newVolume);
         this.volume = newVolume;
 
-        lock (this.instances) {
-            foreach (var instance in this.instances) {
-                instance.SetVolume(newVolume);
-            }
-        }
+        // NOTE: Updating the volume of speaking instances will crash the game
+        // (heap corruption in ntdll, what the actual fuck lmfao)
     });
 
     public Task SetMaxInstances(int newMaxInstances) => Services.Framework.RunOnTick(() => {
         Services.PluginLog.Debug("Setting max instances: {NewMaxInstances}", newMaxInstances);
-        this.maxInstances = newMaxInstances;
 
         lock (this.instances) {
+            this.maxInstances = newMaxInstances;
+
             while (this.instances.Count > this.maxInstances) {
                 var instance = this.instances.First();
                 instance.Dispose();
@@ -91,7 +103,18 @@ public class SpeechManager : IDisposable {
         }
     });
 
+    public Task ResetAll() => Services.Framework.RunOnTick(() => {
+        Services.PluginLog.Debug("Resetting all instances");
+
+        lock (this.instances) {
+            foreach (var instance in this.instances) {
+                instance.Reset();
+            }
+        }
+    });
+
     private static async Task DownloadDecTalk(string outputDir) {
+        // TEMP
         const string url = "https://github.com/dectalk/dectalk/releases/download/2023-10-30/vs2022.zip";
         const string expectedHash = "4a778056c109b37f95ade4b3d3e308b9396b22a4b0629f9756ec0e5051b9636d";
         string[] zipFiles = ["AMD64/DECtalk.dll", "AMD64/dtalk_us.dic"];

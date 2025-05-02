@@ -1,4 +1,6 @@
-﻿namespace MoonbaseOmega.TextToSpeech;
+﻿using System.Diagnostics;
+
+namespace MoonbaseOmega.TextToSpeech;
 
 public class TextToSpeech : IDisposable {
     private readonly nint handle;
@@ -32,6 +34,11 @@ public class TextToSpeech : IDisposable {
         "TextToSpeechSetVolume"
     );
 
+    public void Reset() => AssertCall(
+        Native.TextToSpeechReset(this.handle, true),
+        "TextToSpeechReset"
+    );
+
     public bool IsBusy() {
         uint[] identifiers = [Native.StatusSpeaking];
         uint[] statuses = [0];
@@ -46,5 +53,19 @@ public class TextToSpeech : IDisposable {
 
     private static void AssertCall(uint value, string method) {
         if (value != 0) throw new Exception($"Calling {method} returned error code {value}");
+    }
+
+    private static string? GetLogFilePath() {
+        var main = Process.GetCurrentProcess().MainModule;
+        if (main is null) return null;
+
+        var drive = Path.GetPathRoot(main.FileName);
+        if (drive is null) return null;
+
+        return Path.Combine(drive, "dtdic.log");
+    }
+
+    public static void DeleteLogFile() {
+        if (GetLogFilePath() is { } path && File.Exists(path)) File.Delete(path);
     }
 }

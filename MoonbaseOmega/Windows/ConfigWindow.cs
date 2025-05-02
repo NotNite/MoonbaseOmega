@@ -35,7 +35,7 @@ public class ConfigWindow : Window, IDisposable {
 
         this.maxInstances = this.configuration.MaxInstances;
         this.volume = this.configuration.Volume;
-        this.chatTypes = this.configuration.ChatTypes!;
+        this.chatTypes = this.configuration.ChatTypes!.ToList();
         this.autoDeleteLogFile = this.configuration.AutoDeleteLogFile;
 
         this.configuration.OnConfigurationSaved += this.OnConfigurationSaved;
@@ -145,7 +145,7 @@ public class ConfigWindow : Window, IDisposable {
     private void ApplyChanges() {
         this.configuration.MaxInstances = this.maxInstances;
         this.configuration.Volume = this.volume;
-        this.configuration.ChatTypes = this.chatTypes;
+        this.configuration.ChatTypes = this.chatTypes.ToList();
         this.configuration.AutoDeleteLogFile = this.autoDeleteLogFile;
         this.configuration.Save();
         this.changed = false;
@@ -154,7 +154,7 @@ public class ConfigWindow : Window, IDisposable {
     private void DiscardChanges() {
         this.maxInstances = this.configuration.MaxInstances;
         this.volume = this.configuration.Volume;
-        this.chatTypes = this.configuration.ChatTypes!;
+        this.chatTypes = this.configuration.ChatTypes!.ToList();
         this.autoDeleteLogFile = this.configuration.AutoDeleteLogFile;
         this.changed = false;
     }

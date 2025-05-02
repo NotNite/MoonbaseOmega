@@ -114,7 +114,6 @@ public class SpeechManager : IDisposable {
     });
 
     private static async Task DownloadDecTalk(string outputDir) {
-        // TEMP
         const string url = "https://github.com/dectalk/dectalk/releases/download/2023-10-30/vs2022.zip";
         const string expectedHash = "4a778056c109b37f95ade4b3d3e308b9396b22a4b0629f9756ec0e5051b9636d";
         string[] zipFiles = ["AMD64/DECtalk.dll", "AMD64/dtalk_us.dic"];

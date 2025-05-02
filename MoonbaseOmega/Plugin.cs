@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
@@ -8,6 +10,8 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Config;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
+using Lumina.Text.Payloads;
+using Lumina.Text.ReadOnly;
 
 namespace MoonbaseOmega;
 
@@ -104,8 +108,69 @@ public class Plugin : IDalamudPlugin {
         if (Services.ClientState.TerritoryType != TerritoryType) return;
         if (!this.configuration.ChatTypes!.Contains(type)) return;
 
-        var text = message.TextValue;
-        Task.Run(() => this.speechManager.TrySpeak(text));
+        try {
+            var text = ExtractTextButGoated(message);
+            if (string.IsNullOrWhiteSpace(text)) return;
+            Task.Run(() => this.speechManager.TrySpeak(text));
+        } catch (Exception e) {
+            Services.PluginLog.Error(e, "Failed to extract text");
+        }
+    }
+
+    private static string? ExtractTextButGoated(SeString message) {
+        // Lumina SeString has better parsing
+        var lumina = new Lumina.Text.SeString(message.Encode()).AsReadOnly();
+        var linkDepth = 0;
+        var str = new StringBuilder();
+
+        foreach (var payload in lumina.AsEnumerable()) {
+            if (payload.Type is ReadOnlySePayloadType.Macro) {
+                // https://github.com/NotAdam/Lumina/blob/71b351f57e662ad1eb8379c6b04cb031b2dc8142/src/Lumina/Text/ReadOnly/ReadOnlySeStringSpan.cs#L254
+                switch (payload.MacroCode) {
+                    case MacroCode.NewLine: {
+                        str.Append('\n');
+                        break;
+                    }
+
+                    case MacroCode.NonBreakingSpace: {
+                        str.Append('\u00A0');
+                        break;
+                    }
+
+                    case MacroCode.Hyphen: {
+                        str.Append('-');
+                        break;
+                    }
+
+                    case MacroCode.SoftHyphen: {
+                        str.Append('\u00AD');
+                        break;
+                    }
+
+                    case MacroCode.Link: {
+                        // Ignore links until their terminator
+                        if (
+                            linkDepth > 0
+                            && payload.TryGetExpression(out var expression)
+                            && expression.TryGetInt(out var linkTypeInt)
+                            && ((LinkMacroPayloadType) linkTypeInt) is LinkMacroPayloadType.Terminator
+                        ) {
+                            linkDepth--;
+                        } else {
+                            linkDepth++;
+                        }
+
+                        continue;
+                    }
+                }
+            }
+
+            if (linkDepth > 0) continue;
+            if (payload.Type is not ReadOnlySePayloadType.Text) continue;
+            str.Append(payload.ToString());
+        }
+
+        return str.ToString();
     }
 
     private void SystemChanged(object? sender, ConfigChangeEvent e) {

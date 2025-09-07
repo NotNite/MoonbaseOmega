@@ -17,7 +17,7 @@ namespace MoonbaseOmega;
 
 public class Plugin : IDalamudPlugin {
     private const ushort Sinus_Ardorum = 1237; // ffxiv/cos_c1/hou/c1w1/level/c1w1
-    private const ushort Phaenna = 1291; // ffxiv/cos_c1/hou/c1w1/level/c1w1
+    private const ushort Phaenna = 1291;
     private const string CommandName = "/moonbaseomega";
 
     private readonly WindowSystem windowSystem = new("MoonbaseOmega");

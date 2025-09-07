@@ -16,7 +16,8 @@ using Lumina.Text.ReadOnly;
 namespace MoonbaseOmega;
 
 public class Plugin : IDalamudPlugin {
-    private const ushort TerritoryType = 1237; // ffxiv/cos_c1/hou/c1w1/level/c1w1
+    private const ushort Sinus_Ardorum = 1237; // ffxiv/cos_c1/hou/c1w1/level/c1w1
+    private const ushort Phaenna = 1291; // ffxiv/cos_c1/hou/c1w1/level/c1w1
     private const string CommandName = "/moonbaseomega";
 
     private readonly WindowSystem windowSystem = new("MoonbaseOmega");
@@ -105,7 +106,7 @@ public class Plugin : IDalamudPlugin {
     private void ChatMessage(
         XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled
     ) {
-        if (Services.ClientState.TerritoryType != TerritoryType) return;
+        if (Services.ClientState.TerritoryType != Sinus_Ardorum && Services.ClientState.TerritoryType != Phaenna) return;
         if (!this.configuration.ChatTypes!.Contains(type)) return;
 
         try {

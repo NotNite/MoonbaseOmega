@@ -106,7 +106,7 @@ public class Plugin : IDalamudPlugin {
     private void ChatMessage(
         XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled
     ) {
-        if (Services.ClientState.TerritoryType != Sinus_Ardorum && Services.ClientState.TerritoryType != Phaenna) return;
+        if (Services.ClientState.TerritoryType != SinusArdorum && Services.ClientState.TerritoryType != Phaenna) return;
         if (!this.configuration.ChatTypes!.Contains(type)) return;
 
         try {

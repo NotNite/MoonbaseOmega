@@ -18,6 +18,7 @@ namespace MoonbaseOmega;
 public class Plugin : IDalamudPlugin {
     private const ushort SinusArdorum = 1237; // ffxiv/cos_c1/hou/c1w1/level/c1w1
     private const ushort Phaenna = 1291;
+    private const ushort Oizys = 1310;
     private const string CommandName = "/moonbaseomega";
 
     private readonly WindowSystem windowSystem = new("MoonbaseOmega");
@@ -106,7 +107,7 @@ public class Plugin : IDalamudPlugin {
     private void ChatMessage(
         XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled
     ) {
-        if (Services.ClientState.TerritoryType != SinusArdorum && Services.ClientState.TerritoryType != Phaenna) return;
+        if (Services.ClientState.TerritoryType != SinusArdorum && Services.ClientState.TerritoryType != Phaenna && Services.ClientState.TerritoryType != Oizys) return;
         if (!this.configuration.ChatTypes!.Contains(type)) return;
 
         try {

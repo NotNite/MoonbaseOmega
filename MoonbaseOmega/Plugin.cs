@@ -125,8 +125,7 @@ public class Plugin : IDalamudPlugin {
     }
 
     private static string? ExtractTextButGoated(SeString message) {
-        // Lumina SeString has better parsing
-        var lumina = new Lumina.Text.SeString(message.Encode()).AsReadOnly();
+        var lumina = new ReadOnlySeString(message.Encode());
         var linkDepth = 0;
         var str = new StringBuilder();
 
